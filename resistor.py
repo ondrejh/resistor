@@ -27,5 +27,27 @@ def normalize_series(series='e12'):
     ext_row = list(VALUES[series])+[VALUES[series][0]*10,]
     return tuple([elem / 100  for elem in ext_row])
 
+def get_multiple(value):
+    ''' Get value multiple
+          1 for 1 .. 10
+          0.1 for 0.1 .. 1
+          100 for 100 .. 1000
+    Keyword arguments:
+        value -- input value
+    Rerutn: multiple value (int)
+    '''
+
+    multiples = [10**(enum-3) for enum in range(13)]
+
+    if value<multiples[0]: raise ValueError('value out of range (too low)')
+
+    lesthan = [value<enum for enum in multiples]
+    if True in lesthan: return multiples[lesthan.index(True)-1]
+
+    raise ValueError('value out of range (too high)')
+    
 ''' test '''
-print(normalize_series('e6'))
+print(get_multiple(9.7))
+print(get_multiple(8))
+print(get_multiple(100000000))
+print(get_multiple(0.02))
