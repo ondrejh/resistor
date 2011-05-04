@@ -54,6 +54,24 @@ def get_nearest_in_series(value,series='e12'):
     norm = [enum*mult for enum in normalize_series(series)]
     errs = [abs(enum-value)/value for enum in norm]
     return norm[errs.index(min(errs))]
+
+def get_divider(div,series='e12',mult=100):
+    ''' Get the best divider result in series
+    Keyword arguments:
+        div -- division ratio
+        series -- defined series ('e12' default)
+    Return: closes combination in series (R1, R2, error[%])
+    '''
+    if div==0: raise ValueError('non 0 value expected')
+    if series not in SERIES: raise ValueError('unknown series')
+    '''r1input = normalize_series(series)*mult'''
+    r1input = VALUES[series]
+    r2ideal = [enum * div for enum in VALUES[series]]
+    r2closes = [get_nearest_in_series(enum) for enum in r2ideal]
+    diverrs = [(r2closes[i]/r1input[i])-div for i in range(len(r1input))]
+    absdiverrs = [abs(enum)*100 for enum in diverrs]
+    mini = absdiverrs.index(min(absdiverrs))
+    return [r1input[mini],r2closes[mini],diverrs[mini]*100]
     
 ''' test '''
-print(get_nearest_in_series(1598.7,'e24'))
+print(get_divider(4.56))
