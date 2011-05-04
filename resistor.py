@@ -20,34 +20,40 @@ def normalize_series(series='e12'):
     ''' Normalize series into values 1 .. 10
     Keyword arguments:
         series -- initial series (default e12)
-    Return: normalized series (tuple) 
+    Return: normalized series (list) 
     '''
     if series not in SERIES:
         raise ValueError('unknown value series')
     ext_row = list(VALUES[series])+[VALUES[series][0]*10,]
-    return tuple([elem / 100  for elem in ext_row])
+    return [elem / 100  for elem in ext_row]
 
 def get_multiple(value):
-    ''' Get value multiple
-          1 for 1 .. 10
-          0.1 for 0.1 .. 1
-          100 for 100 .. 1000
+    ''' Get normalized value multiple
     Keyword arguments:
         value -- input value
     Rerutn: multiple value (int)
+          1 for 1 .. 10
+          0.1 for 0.1 .. 1
+          100 for 100 .. 1000
     '''
-
     multiples = [10**(enum-3) for enum in range(13)]
-
     if value<multiples[0]: raise ValueError('value out of range (too low)')
-
     lesthan = [value<enum for enum in multiples]
     if True in lesthan: return multiples[lesthan.index(True)-1]
-
     raise ValueError('value out of range (too high)')
+
+def get_nearest_in_series(value,series='e12'):
+    ''' Get nearest value in defined series
+    Keyword arguments:
+        value -- input value
+        series -- defined series ('e12' default)
+    Return: Nearest value in series
+    '''
+    if value==0: raise ValueError('non 0 value expected')
+    mult = get_multiple(value)
+    norm = [enum*mult for enum in normalize_series(series)]
+    errs = [abs(enum-value)/value for enum in norm]
+    return norm[errs.index(min(errs))]
     
 ''' test '''
-print(get_multiple(9.7))
-print(get_multiple(8))
-print(get_multiple(100000000))
-print(get_multiple(0.02))
+print(get_nearest_in_series(1598.7,'e24'))
