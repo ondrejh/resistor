@@ -16,6 +16,10 @@ VALUES = {'e6' :(100,150,220,330,470,680),
                  562,590,619,649,681,715,
                  750,787,825,866,909,953)}
 
+MULTMIN = -3
+MULTRANGE = 13
+MULTIPLIES = [10**(enum+MULTMIN) for enum in range(MULTRANGE)]
+
 def normalize_series(series='e12'):
     ''' Normalize series into values 1 .. 10
     Keyword arguments:
@@ -36,7 +40,7 @@ def get_multiple(value):
           0.1 for 0.1 .. 1
           100 for 100 .. 1000
     '''
-    multiples = [10**(enum-3) for enum in range(13)]
+    multiples = list(MULTIPLIES)
     if value<multiples[0]: raise ValueError('value out of range (too low)')
     lesthan = [value<enum for enum in multiples]
     if True in lesthan: return multiples[lesthan.index(True)-1]
@@ -55,23 +59,42 @@ def get_nearest_in_series(value,series='e12'):
     errs = [abs(enum-value)/value for enum in norm]
     return norm[errs.index(min(errs))]
 
-def get_divider(div,series='e12',mult=100):
+def get_divider(div,series='e12',r1series=None,r2series=None,mult=100,esum=None,weight=1):
     ''' Get the best divider result in series
     Keyword arguments:
         div -- division ratio
-        series -- defined series ('e12' default)
-    Return: closes combination in series (R1, R2, error[%])
+        series -- defined series ('e12' default) - used when r1/r2 series not defined
+        r1series -- defined series for r1 (None default / in this case "series" value used)
+        r2series -- defined series for r2 (None default / in this case "series" value used)
+        mult -- multiplicator of normalized series (should be 10^n) for r1 selection
+        esum -- divider sum wanted result (if not defined - not used)
+        weight -- divider value / sum weight [range 1.0 .. 0.0](1..only divider error, 0..only sum error)
+    Return: closes combination in series (R1, R2, divider error, sum error)
     '''
     if div==0: raise ValueError('non 0 value expected')
     if series not in SERIES: raise ValueError('unknown series')
-    '''r1input = normalize_series(series)*mult'''
-    r1input = VALUES[series]
-    r2ideal = [enum * div for enum in VALUES[series]]
-    r2closes = [get_nearest_in_series(enum) for enum in r2ideal]
+    if r1series == None: r1series = series
+    if r2series == None: r2series = series
+    ## input series
+    r1input = [enum * (mult/100) for enum in VALUES[r1series]]
+    ## divider
+    r2ideal = [enum * div for enum in r1input]
+    r2closes = [get_nearest_in_series(enum,r2series) for enum in r2ideal]
+    ## divider error
     diverrs = [(r2closes[i]/r1input[i])-div for i in range(len(r1input))]
-    absdiverrs = [abs(enum)*100 for enum in diverrs]
-    mini = absdiverrs.index(min(absdiverrs))
-    return [r1input[mini],r2closes[mini],diverrs[mini]*100]
+    absdiverrs = [abs(enum) for enum in diverrs]
+    ## divider sum value
+    rsum = [r1input[i]+r2closes[i] for i in range(len(r1input))]
+    if esum == None: rsumerrs = [0 for i in range(len(r1input))]
+    else: rsumerrs = [(rsum[i]-esum)/rsum[i] for i in range(len(r1input))]
+    absrsumerrs = [abs(enum) for enum in rsumerrs]
+    ## weighted error
+    werr = [absdiverrs[i]*weight+absrsumerrs[i]*(1-weight) for i in range(len(r1input))]
+    ## the best result index (minimum error)
+    mini = werr.index(min(werr))
+    ## return (R1,R2,divider error,sum error)
+    return [r1input[mini],r2closes[mini],diverrs[mini]*100,rsumerrs[mini]*100]
     
 ''' test '''
-print(get_divider(4.56))
+#print('R1: {0[0]:.3f}Ω, R2: {0[1]:.3f}Ω, Divider error: {0[2]:.2f}%, Sum error: {0[3]:.2f}%'.format(get_divider(div=1.586,series='e24',mult=1000,esum=10000,weight=0.8)))
+#print('R1: {0[0]:.3f}Ω, R2: {0[1]:.3f}Ω, Divider error: {0[2]:.2f}%, Sum error: {0[3]:.2f}%'.format(get_divider(div=1.586,mult=1000)))
