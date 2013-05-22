@@ -14,7 +14,23 @@ VALUES = {'e6' :(100,150,220,330,470,680),
                  316,332,348,365,383,402,
                  442,453,464,487,511,536,
                  562,590,619,649,681,715,
-                 750,787,825,866,909,953)}
+                 750,787,825,866,909,953),
+          'e96':(100,102,105,107,110,113,
+                 115,118,121,124,127,130,
+                 133,137,140,143,147,150,
+                 154,158,162,165,169,174,
+                 178,182,187,191,196,200,
+                 205,210,215,221,226,232,
+                 237,243,249,255,261,267,
+                 274,280,287,294,301,309,
+                 316,324,332,340,348,357,
+                 365,374,383,392,402,412,
+                 422,432,442,453,464,475,
+                 487,499,511,523,536,549,
+                 562,576,590,604,619,634,
+                 649,665,681,698,715,732,
+                 750,768,787,806,825,845,
+                 866,887,909,931,953,976)}
 
 MULTMIN = -3
 MULTRANGE = 13
@@ -46,18 +62,24 @@ def get_multiple(value):
     if True in lesthan: return multiples[lesthan.index(True)-1]
     raise ValueError('value out of range (too high)')
 
-def get_nearest_in_series(value,series='e12'):
+def get_nearest_in_series(value,series='e12',dirr=None):
     ''' Get nearest value in defined series
     Keyword arguments:
         value -- input value
         series -- defined series ('e12' default)
+        dirr -- dirrection (None .. don't care, Hi .. closest higher, Low .. closest lower)
     Return: Nearest value in series
     '''
     if value==0: raise ValueError('non 0 value expected')
     mult = get_multiple(value)
     norm = [enum*mult for enum in normalize_series(series)]
     errs = [abs(enum-value)/value for enum in norm]
-    return norm[errs.index(min(errs))]
+    bestid = errs.index(min(errs))
+    if (dirr=="Hi") and (norm[bestid]<value):
+        return round(norm[bestid+1],8)
+    if (dirr=="Low") and (norm[bestid]>value):
+        return round(norm[bestid-1],8)
+    return round(norm[bestid],8)
 
 def get_divider(div,series='e12',r1series=None,r2series=None,mult=100,esum=None,weight=1):
     ''' Get the best divider result in series
@@ -94,7 +116,29 @@ def get_divider(div,series='e12',r1series=None,r2series=None,mult=100,esum=None,
     mini = werr.index(min(werr))
     ## return (R1,R2,divider error,sum error)
     return [r1input[mini],r2closes[mini],diverrs[mini]*100,rsumerrs[mini]*100]
+
+def get_paraller(val,series='e12'):
+    ''' Get the bes parraler combination to the val
+    Keyword arguments:
+        val -- value of the parraler combination
+        series -- defined series ('e12' default) - used when r1/r2 series not defined
+        r1mult -- multiplicator of normalized series (should be 10^n) for r1 selection
+    Return: [R1, R2, value error]
+    '''
+    if val==0: raise ValueError('non 0 value expected')
+    if series not in SERIES: raise ValueError('unknown series')
+    #first value
+    r1 = [get_nearest_in_series(val,series,"Hi")]
+    r2 = [get_nearest_in_series(1/(1/val - 1/r1[-1]))]
+    err = [abs(1/(1/r1[0]+1/r2[0])-val)]
+    while r1[-1]<=r2[-1]:
+        r1 += [get_nearest_in_series(r1[-1]*1.001,series,"Hi")]
+        r2 += [get_nearest_in_series(1/(1/val - 1/r1[-1]))]
+        err += [abs(1/(1/r1[-1]+1/r2[-1])-val)]
+    minid = err.index(min(err))
+    return [r1[minid],r2[minid],err[minid]]
     
 ''' test '''
 #print('R1: {0[0]:.3f}Ω, R2: {0[1]:.3f}Ω, Divider error: {0[2]:.2f}%, Sum error: {0[3]:.2f}%'.format(get_divider(div=1.586,series='e24',mult=1000,esum=10000,weight=0.8)))
 #print('R1: {0[0]:.3f}Ω, R2: {0[1]:.3f}Ω, Divider error: {0[2]:.2f}%, Sum error: {0[3]:.2f}%'.format(get_divider(div=1.586,mult=1000)))
+#print(resistor.get_paraller(717,'e24'))
