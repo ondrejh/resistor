@@ -1,4 +1,4 @@
-SERIES = ('e6','e12','e24','e48')
+SERIES = ('e6','e12','e24','e48','e96')
 
 VALUES = {'e6' :(100,150,220,330,470,680),
           'e12':(100,120,150,180,220,270,
@@ -117,7 +117,7 @@ def get_divider(div,series='e12',r1series=None,r2series=None,mult=100,esum=None,
     ## return (R1,R2,divider error,sum error)
     return [r1input[mini],r2closes[mini],diverrs[mini]*100,rsumerrs[mini]*100]
 
-def get_paraller(val,series='e12'):
+def get_paraller(val,series='e12',rmax=None):
     ''' Get the bes parraler combination to the val
     Keyword arguments:
         val -- value of the parraler combination
@@ -129,13 +129,19 @@ def get_paraller(val,series='e12'):
     if series not in SERIES: raise ValueError('unknown series')
     #first value
     r1 = [get_nearest_in_series(val,series,"Hi")]
-    r2 = [get_nearest_in_series(1/(1/val - 1/r1[-1]))]
+    r2 = [get_nearest_in_series(1/(1/val - 1/r1[-1]),series)]
     err = [abs(1/(1/r1[0]+1/r2[0])-val)]
-    while r1[-1]<=r2[-1]:
+    #get all the combinations
+    while (r1[-1]<=r2[-1]):
         r1 += [get_nearest_in_series(r1[-1]*1.001,series,"Hi")]
-        r2 += [get_nearest_in_series(1/(1/val - 1/r1[-1]))]
+        r2 += [get_nearest_in_series(1/(1/val - 1/r1[-1]),series)]
         err += [abs(1/(1/r1[-1]+1/r2[-1])-val)]
+    maxid = err.index(max(err))
     minid = err.index(min(err))
+    if rmax!=None: #use max value limit if defined
+        while (r1[minid]>rmax) or (r2[minid]>rmax):
+            err[minid]=err[maxid]
+            minid = err.index(min(err))
     return [r1[minid],r2[minid],err[minid]]
     
 ''' test '''
